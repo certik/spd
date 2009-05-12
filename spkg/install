@@ -331,6 +331,9 @@ export SETUPTOOLS
 SINGULAR=`$newest singular`
 export SINGULAR
 
+SPD_NOTEBOOK=`$newest spd_notebook`
+export SPD_NOTEBOOK
+
 SYMPOW=`$newest sympow`
 export SYMPOW
 
