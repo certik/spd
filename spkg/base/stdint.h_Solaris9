@@ -1,0 +1,11 @@
+#ifndef stdint_sun
+#define stdint_sun
+
+// the following is set for 32 bit mode
+#define _ILP32
+#include "inttypes.h"
+typedef unsigned long long      uint64_t;
+typedef unsigned long long  int_fast64_t;
+typedef unsigned long       int_fast32_t;
+#endif
+

@@ -1,0 +1,15 @@
+GCC=@GCC@
+MAKE=@MAKE@
+M4=@M4@
+PERL=@PERL@
+PERL1=@PERL1@
+RANLIB=@RANLIB@
+TAR=@TAR@
+SH=@SH@
+
+NAME=prereq-0.1
+
+dist:
+	autoconf configure.ac > configure
+	rm -rf $(NAME).tar* autom4te.cache Makefile config.log config.status *~ \#*\#
+	cd .. ; tar -cvf $(NAME).tar $(NAME); mv $(NAME).tar $(NAME)/

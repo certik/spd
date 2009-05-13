@@ -1,0 +1,194 @@
+#!/bin/sh
+###########################################
+## Check for prerequisite programs
+###########################################
+
+
+BUILD=build
+ROOT=`pwd`
+LOCAL="$ROOT/../local"
+TARGET=prereq-0.3
+
+cd $BUILD
+
+echo "Starting prerequisite check."
+echo "Machine: `uname -a`"
+
+if [ "$SAGE_PORT" = "" ]; then
+   if [ `uname | sed -e 's/WIN.\+/WIN/'` = "CYGWIN" ]; then
+      echo "Building or using SAGE with Cygwin is absolutely definitely"
+      echo "not supported, and will definitely not work.  The only way"
+      echo "to run SAGE on Windows, is via VMware (or Virtual PC or "
+      echo "some other virtualization system such as andLinux)."
+      echo "NOTE: SAGE used to support Cygwin several months ago (around March"
+      echo "2007), so you may have seen some old documentation about this."
+      exit -1
+   fi
+   if [ `uname` = "SunOS" ]; then
+      echo "Building or using Sage on Solaris is tricky and not supported"
+      echo "at the moment. It is possible, but you should be well aware that"
+      echo "some things do not work. To get past this message export the"
+      echo "variable \$SAGE_PORT to something non-empty. Support for Solaris"
+      echo "is actively being worked on."
+      exit -1
+   fi
+fi
+
+if [ `uname` = "SunOS" -a `uname -r` = "5.9" ]; then
+      echo "Solaris 9: copying work around stdint.h"
+      cp $SAGE_ROOT/spkg/base/stdint.h_Solaris9 $SAGE_LOCAL/include/stdint.h
+fi
+
+if [ `uname` = "Darwin" -a "$SAGE64" = "yes" ]; then
+   echo "64 bit OSX build"
+   SAGE_OPT="-O2 -g -m64 " && export SAGE_OPT
+fi
+
+# From Kate Minola kate01123@gmail.com
+# On my powerpc-Darwin machine with csh as my shell, when I attempt
+# to build SAGE in the background (i.e., "make &") the build
+# stops when executing 'prereq-0.2-install'.  The reason is
+# that the line
+#     which $1 > /dev/null
+# issues a SIGTTOU signal (background process attempting to write
+# to tty).  Solution:
+trap '' TTOU
+
+# Make sure a couple of basic commands are available before
+# doing anything more sophisticated.
+check() {
+    which $1 > /dev/null
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "**************************************************"
+        echo "* SAGE BUILD ERROR: Command '$1' not found        "
+        echo "* You *must* install $1 before building SAGE      "
+        echo "*"
+        echo "* In Cygwin use the setup program, available from "
+        echo "* www.cygwin.com (run their setup.exe).  In Linux "
+        echo "* use your package manager and in OS X install the"
+        echo "* newest version of XCode.  If you still have trouble"
+        echo "* email William Stein (wstein@gmail.com) or       "
+        echo "* sage-support@groups.google.com.                 "
+        echo "**************************************************"
+        echo ""
+        exit 1
+    fi
+    echo "found $1"
+}
+
+check make
+check perl
+check m4
+check ranlib
+check tar
+check gcc
+
+if [ "$UNAME" = "CYGWIN" ]; then
+    echo "Unfortunately, building SAGE on Cygwin is no longer supported."
+    echo "Please use a virtualization solution instead, such as vmware."
+    exit 1
+fi
+
+#####################################################################################
+# A slightly more sophisticated test for relevant commands, and 
+# that they that actually work correctly.
+#####################################################################################
+
+tar mxvf "../base/$TARGET.tar"
+cd "$TARGET"
+
+./configure
+
+if [ $? -ne 0 ]; then
+    echo " ERROR: You do not have all of the prerequisites needed"
+    echo " to build SAGE from source.  See the errors above."
+    exit 1
+fi
+
+# Check if the word missing appears anywhere in the makefile:
+grep "missing" Makefile
+
+# Yes, the word missing appeared. 
+if [ $? -eq 0 ];  then 
+    echo ""
+    echo "*********************************************************"
+    echo ""
+    echo " ERROR: You do not have all of the prerequisites needed"
+    echo " to build SAGE from source.  See the errors above.  Also"
+    echo " The following programs are missing: "
+    echo ""
+    grep "missing" Makefile
+    echo ""
+    echo "*********************************************************"
+    exit 1
+fi
+
+echo `pwd` |grep " "
+
+if [ $? -eq 0 ];  then 
+    echo ""
+    echo "*********************************************************"
+    echo ""
+    echo " ERROR: SAGE will (probably) not build correctly if there is a space"
+    echo " in the path to the current directory."
+    echo ""
+    echo " Path = `pwd`"
+    echo ""
+    echo "*********************************************************"
+    exit 1
+else
+    echo " All prerequisites appear to be present."
+    touch $ROOT/installed/$TARGET
+fi
+
+
+#####################################################################################
+# (OS X only)
+# Sage will probably not build at all if either Fink or MacPorts can be found, and 
+# the error messages can be extremely confusing.  Even if it does build, the product
+# will probably be wrong.  This runs a basic check to find them.
+# Once the Sage build process is perfected, this won't be necessary.
+# dphilp 15/9/2008
+#####################################################################################
+
+if [ `uname` = "Darwin" ] ; then
+  SAGE_ABORT=no
+  # Try to find ports automatically.
+  PORTS_PATH=`which port`
+  if [ -f "`which port`" ]; then
+      echo "Found MacPorts in " $PORTS_PATH
+      SAGE_ABORT="yes"; export SAGE_ABORT
+  fi
+
+  # Try to find fink automatically.
+  FINK_PATH=`which fink`
+  if [ -f "`which fink`" ]; then
+      echo "Found Fink in " $FINK_PATH
+      SAGE_ABORT="yes"; export SAGE_ABORT
+  fi
+
+  if [ "$SAGE_ABORT" = "yes" ] ; then
+    echo ""
+    echo "*********************************************************"
+    echo ""
+    echo "Found either MacPorts or Fink in your path, which potentially wrecks the Sage build process."
+    if [ "$SAGE_COMPILE_DESPITE_PORTS_AND_FINK" ] ; then
+      echo "Continuing because SAGE_COMPILE_DESPITE_PORTS_AND_FINK is set."
+      echo ""
+      echo "*********************************************************"
+      echo ""
+    else
+      echo "You should make sure MacPorts and Fink cannot be found.  Either:"
+      echo "(1) rename /opt/local and /sw, or"
+      echo "(2) change PATH and DYLD_LIBRARY_PATH"
+      echo "(Once Sage is built, you can restore them.)"
+      echo ""
+      echo "*********************************************************"
+      echo ""
+      exit 1
+    fi
+  fi
+fi
+
+
