@@ -26,12 +26,13 @@ wget -nc $SAGE_STANDARD/tinyMCE-3.2.0.2.p0.spkg
 wget -nc $SPD_STANDARD/spd_notebook-3.4.1-3.spkg
 
 # numpy, scipy matplotlib and sympy
-
 wget -nc $SAGE_STANDARD/fortran-20071120.p5.spkg
 wget -nc $SAGE_STANDARD/lapack-20071123.p0.spkg
 wget -nc $SAGE_STANDARD/blas-20070724.spkg
 #wget -nc $SAGE_STANDARD/atlas-3.8.3.p0.spkg
 wget -nc $SAGE_STANDARD/numpy-1.2.0.p0.spkg
 wget -nc $SAGE_STANDARD/scipy-20071020-0.6.p4.spkg
+wget -nc $SAGE_STANDARD/freetype-2.3.5.p0.spkg
+wget -nc $SAGE_STANDARD/libpng-1.2.35.spkg
 wget -nc $SAGE_STANDARD/matplotlib-0.98.5.3rc0-svn6910.p3.spkg
 wget -nc $SAGE_STANDARD/sympy-0.6.4.spkg
