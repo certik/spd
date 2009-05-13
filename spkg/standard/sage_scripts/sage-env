@@ -26,11 +26,11 @@
 SAVEDIR="`pwd`"
 
 if [ "$SAGE_ROOT" = "" ]; then
-    if [ -f sage -a -d spkg ]; then
+    if [ -f spd -a -d spkg ]; then
        SAGE_ROOT="`pwd`"
        export SAGE_ROOT
     else
-       if [ -f ../../sage -a -d ../../spkg ]; then
+       if [ -f ../../spd -a -d ../../spkg ]; then
            cd ../../
            SAGE_ROOT="`pwd`"
            export SAGE_ROOT
@@ -41,12 +41,12 @@ if [ "$SAGE_ROOT" = "" ]; then
         fi
     fi
 else
-    if [ -f sage -a -d spkg ]; then
+    if [ -f spd -a -d spkg ]; then
        if [ "$SAGE_ROOT" != "`pwd`" ]; then
            echo "Warning: Attempted to overwrite SAGE_ROOT enviroment variable"             
        fi
     else
-       if [ -f ../../sage -a -d ../../spkg ]; then
+       if [ -f ../../spd -a -d ../../spkg ]; then
            cd ../../
            if [ "$SAGE_ROOT" != "`pwd`" ]; then
               echo "Warning: Attempted to overwrite SAGE_ROOT enviroment variable"             
@@ -128,7 +128,7 @@ if [ "$SAGE_SERVER" = "" ]; then
 fi
 
 if [ "$DOT_SAGE" = "" ]; then
-    DOT_SAGE="$HOME/.sage/"
+    DOT_SAGE="$HOME/.spd/"
     export DOT_SAGE
 fi
 

@@ -237,17 +237,17 @@ pprint 1
 
 # Use \# to represent the current prompt number, and quote them to protect
 # spaces.
-#prompt_in1 'In [\#]: '
-prompt_in1 '${sage_prompt()}: '
+prompt_in1 'In [\#]: '
+#prompt_in1 '${sage_prompt()}: '
 
 # \D is replaced by as many dots as there are digits in the
 # current value of \#.
-#prompt_in2 '   .\D.: '
+prompt_in2 '   .\D.: '
 # From F. Perez On oct 6.
-prompt_in2 '${'.'*len(sage_prompt())}: '
+#prompt_in2 '${'.'*len(sage_prompt())}: '
 
-#prompt_out 'Out[\#]: '
-prompt_out ''
+prompt_out 'Out[\#]: '
+#prompt_out ''
 
 # Select whether to left-pad the output prompts to match the length of the
 # input ones.  This allows you for example to use a simple '>' as an output
@@ -532,11 +532,11 @@ import_all
 # and each *line* (not each statement, we don't do python syntax parsing) is
 # executed in its own try/except block.
 
-execute 
+#execute 
 
-execute def view_all(): view([(i, globals()[i]) for i in variables()], title='All SAGE Variables')
-execute def variables(): return [k for k in globals() if not k in iglob and len(k) > 0 and k[0] != '_']
-execute import sage.misc.preparser_ipython;  sage.misc.preparser_ipython.magma_colon_equals=True
+#execute def view_all(): view([(i, globals()[i]) for i in variables()], title='All SAGE Variables')
+#execute def variables(): return [k for k in globals() if not k in iglob and len(k) > 0 and k[0] != '_']
+#execute import sage.misc.preparser_ipython;  sage.misc.preparser_ipython.magma_colon_equals=True
 
 
 # Note for the adventurous: you can use this to define your own names for the
@@ -567,7 +567,7 @@ execute import sage.misc.preparser_ipython;  sage.misc.preparser_ipython.magma_c
 
 # As before, each file gets its own try/except block.
 
-execfile
+#execfile
 
 # If you are feeling adventurous, you can even add functionality to IPython
 # through here. IPython works through a global variable called __ip which

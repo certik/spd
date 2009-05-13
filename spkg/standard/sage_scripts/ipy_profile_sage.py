@@ -1,5 +1,5 @@
 import os
-if 'SAGE_CLEAN' not in os.environ:
+if 0 and 'SAGE_CLEAN' not in os.environ:
     import sage.misc.misc
     from sage.misc.interpreter import preparser, _ip
     preparser(True)
