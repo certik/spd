@@ -20,6 +20,12 @@ if [ ! -f "$SAGE_LOCAL/bin/sage-spkg" ]; then
     cp base/sage-* "$SAGE_LOCAL/bin/"
 fi
 
+cd "$SAGE_ROOT/spkg/standard"
+cp -r sage_scripts sage_scripts-3.4.2
+tar cjf sage_scripts-3.4.2.spkg sage_scripts-3.4.2
+rm -r sage_scripts-3.4.2
+cd "$CUR"
+
 ############
 # Setup environment variables pointing to the newest versions
 # of the base packages
