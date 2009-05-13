@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+
+import os, sys, shutil
+
+SAGE_ROOT = os.environ['SAGE_ROOT']
+
+os.chdir(SAGE_ROOT + "/devel")
+
+def usage():
+    print "\n\n"
+    print "sage -clone <new_branch> [-r rev]"
+    sys.exit(1)
+
+if len(sys.argv) == 1:
+    usage()
+
+if sys.argv[1] == '-r':
+    if len(sys.argv) < 4:
+        usage()
+    sys.argv = [sys.argv[0], sys.argv[3], sys.argv[1], sys.argv[2]]
+
+branch = 'sage-%s'%sys.argv[1]
+
+if os.path.isdir(branch):
+    print "Sage library branch %s already exists so I can't clone to it."%branch
+    sys.exit(1)
+
+if not os.path.isdir('sage'):
+    print "No Sage branch currently selected.  Use 'sage -b [branch_name]'."
+    sys.exit(1)
+
+print "Now cloning the current Sage library branch..."
+cmd = 'hg clone %s sage %s '%(' '.join(sys.argv[2:]), branch)
+print cmd
+if os.system(cmd):
+    print "Error cloning"
+    sys.exit(1)
+
+#if len(sys.argv) == 2:
+
+print "Copying over all Cython auto-generated .c, .cpp and .h files..."
+def cpdir(src, dest):
+    if not os.path.isdir(dest):
+        return
+    for F in os.listdir(src):
+        if os.path.isdir(src + '/' + F):
+            cpdir(src + '/' + F, dest + '/' + F)
+        else:
+            ext = os.path.splitext(F)[-1]
+            if ext in ['.h', '.c', '.cpp']:
+                if 'Cython' in open(src + '/' + F).readline():
+                    shutil.copy(src + '/' + F, dest + '/' +F)
+
+cpdir(os.path.abspath('sage/sage'), os.path.abspath(branch + '/sage'))
+
+print "Copying over build directory."
+cmd = 'cp -r sage/build %s'%branch
+print cmd
+if os.system(cmd):
+    print "Error copying build directory"
+    sys.exit(1)
+# Done copying over build cache.
+
+#Copying over documentation output
+print "Copying over documentation output"
+cmd = 'cp -r sage/doc/output %s/doc'%branch
+print cmd
+if os.system(cmd):
+    print "Error copying documentation output"
+
+print "Building " + branch
+try:
+    if os.environ["SAGE_PBUILD"] == "yes":
+	print "Pbuild is currently broken -- defaulting to serial build."
+        # print "Copying clibsage" 
+	# cmd = 'cp -r sage/c_lib/libcsage.so %s/c_lib/'%branch 
+	#
+	# print cmd
+	# if os.system(cmd):
+    	#	print "Error copying clibsage"
+    	#	sys.exit(1) 
+        # cmd = 'ln -snf "sage-%s" sage' % sys.argv[1]
+        # print cmd 
+        # if os.system(cmd):
+        #     print "Error building SAGE" 
+        # cmd = 'sage -b'
+        cmd = 'sage -b %s'%sys.argv[1] 
+    else:
+	cmd = 'sage -b %s'%sys.argv[1]
+except:
+   cmd = 'sage -b %s'%sys.argv[1]
+print cmd
+if os.system(cmd):
+    print "Error building Sage"
+
+
+print "*** WARNING ***"
+print "If you are cloning a previous revision or have uncommitted changes to"
+print "cython files do "
+print "    sage -ba"
+print "Otherwise Sage might build using the wrong .c files !!"
+

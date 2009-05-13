@@ -1,0 +1,182 @@
+#!/usr/bin/env sage.bin
+
+import os, sys
+
+SAGE_ROOT     = os.environ['SAGE_ROOT']
+
+location_file = '%s/local/lib/sage-current-location.txt'%SAGE_ROOT
+flags_file    = '%s/local/lib/sage-flags.txt'%SAGE_ROOT
+
+def install_moved():
+    """
+    Check whether or not this install of Sage moved.  If it hasn't
+    moved make sure the location and processor flags files are
+    written.
+    """
+    # Write the flags file if it isn't there.
+    if not os.path.exists(flags_file):
+        write_flags_file()
+
+    if not os.path.exists(location_file):
+        # Write the location file since it isn't there.
+        O = open(location_file,'w')
+        O.write(SAGE_ROOT)
+        O.close()
+        return False, ''   # first time -- so no need to update; this was during the build.
+
+    # The install moved and we had written the flags and location files. 
+    O = open(location_file)
+    R = O.read().strip()
+    O.close()
+    if os.path.realpath(R) != os.path.realpath(SAGE_ROOT):  # really different
+        return True, R  # it moved
+    return False, ''
+
+
+# The flags we care about recording in the local/lib/sage-flags.txt file
+# In SSE2 only mode remove pni and ssse3 flags
+try:
+    SAGE_SIMD_MODE = os.environ['SAGE_SIMD_MODE']
+except:
+    SAGE_SIMD_MODE = ""
+
+if SAGE_SIMD_MODE == "SSE2":
+    FLAGS = ['sse', 'sse2', '3d', 'mmx', 'cmov']
+else:
+    FLAGS = ['sse', 'sse2', 'ssse3', '3d', 'mmx', 'pni', 'cmov']
+
+def get_flags_info():
+    """
+    Return a space-separated string that lists the flags supported by
+    this CPU from /proc/cpuinfo.
+    """
+    try:
+        r = open('/proc/cpuinfo').read()
+        i = r.find('flags')
+        r = r[i:]
+        i = r.find(':')
+        r = r[i+1:]
+        i = r.find('\n')
+        r = r[:i]
+
+        # This line restricts the flags to just ones that start with sse, 3d or mmx.
+        # We do not want *all* flags, since some like "up" are not relevant (up = uniprocessor).
+        return ' '.join(set(x for x in r.split() if x in FLAGS))
+
+    except IOError:
+        # On a system without /proc/cpuinfo, so don't bother In
+        # particular, for non Linux systems I have no clue how to get
+        # the processor flags, and we so far have never ever had any
+        # problem with processor flags on such machines.  So we don't
+        # bother.
+        return ''
+    
+def write_flags_file():
+    """
+    Write the flags file to disk.
+    """
+    # Just record the flags
+    open(flags_file,'w').write(get_flags_info())
+
+def check_processor_flags():
+    """
+    Make sure all processor flags from the build machine are on this machine.
+    If the sage-flags.txt file is missing, don't bother to do this check.
+    """
+    if not os.path.exists(flags_file): return
+    # We check that the processor flags of the original build are a
+    # subset of the new machine.  If not, we print a massive warning.
+    X = set(open(flags_file).read().split()).intersection(FLAGS)
+    Y = set(get_flags_info().split())
+    if not X.issubset(Y):
+        print ""
+        print "*"*70
+        print "WARNING!  This Sage install was built on a machine that supports"
+        print "instructions that are not available on this computer.  Sage will"
+        print "likely fail with ILLEGAL INSTRUCTION errors! The following processor"
+        print "flags were on the build machine but are not on this computer:\n"
+        for a in X:
+            if a not in Y:
+                print a,
+        print ""
+        print ""
+        print "Email http://groups.google.com/group/sage-support for help."
+        print "To remove this warning and make Sage start, just delete"
+        print "     %s"%flags_file 
+        print "*"*70
+        sys.exit(1)
+
+def update_library_files(R):
+    LIB = '%s/local/lib/'%os.path.abspath(SAGE_ROOT)
+    # The .a files should be re-ranlib'd
+    os.system('cd "%s"; ranlib *.a 1>/dev/null 2>/dev/null'%LIB)
+
+    # The .la files hardcode path info.  Fix this.
+    for F in os.listdir(LIB):
+       if F[-3:] == ".la":
+           G = open(LIB + F).read()
+	   i = G.find('libdir=')
+	   j = i+8 + G[i+8:].find("'")
+	   z = G[i+8:j].strip().strip("'")
+ 	   i = z.rfind('local/')
+	   if i != -1:
+               z = z[:i]
+               H = G.replace(z, os.path.abspath(SAGE_ROOT) + '/')
+               open(LIB + F,'w').write(H)
+
+def update_hardcoded_files(path):
+    # The only known files with hard coded paths.
+    if os.path.isdir(path):
+        for X in os.listdir(path):
+            update_hardcoded_files('%s/%s'%(path,X))
+    else:
+        P = path[-4:]
+        if P == '.pyo' or P == '.pyc':
+            try:
+                os.unlink(path)
+            except OSError, msg:
+                print msg
+
+    # Write new location file.
+    if os.path.exists(location_file):
+        O = open(location_file,'w')
+        O.write(SAGE_ROOT)
+        O.close()        
+
+# Note that due to updating setuptools to 0.6c9 in Sage 3.3 we no longer need to rewrite 
+# site-packages in easy-install.pth
+def update_easy_install():
+    """
+    Find the easy-install.pth file in the current tree, and replace the line
+    with site-packages in it with a new line that has the correct path to 
+    our new site-packages.
+    """
+    base = '%s/local/lib/python2.5/site-packages'%SAGE_ROOT
+    file = '%s/easy-install.pth'%base
+    r = open(file).readlines()
+    for i in range(len(r)):
+        if 'site-packages' in r[i]:   # found it
+            r[i] = base + '\n'
+            open(file,'w').write(''.join(r))
+            return
+    print "Warning: something went wrong updating the easy-install.pth file."  # non fatal
+
+def __mysig(a,b):
+    raise KeyboardInterrupt, "computation timed out because alarm was set for %s seconds"%__alarm_time
+
+if __name__ ==  '__main__':
+    # Check if SAGE has moved, and if so delete all .pyo and .pyc files
+    # in the python libs directory, so they are rebuilt. 
+    check_processor_flags()
+    t, R = install_moved()
+    if t:
+        print "The SAGE install tree may have moved."
+
+        print "Regenerating Python.pyo and .pyc files that hardcode the install PATH (please wait at"
+        print "most a few minutes)..."
+        print "Do not interrupt this."
+	update_library_files(R)
+        update_hardcoded_files(SAGE_ROOT + '/local/lib/python/')
+        #update_easy_install()
+
+

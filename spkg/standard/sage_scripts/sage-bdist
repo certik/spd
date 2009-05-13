@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+
+########################################################
+# Build Sage *binary* distribution
+# This script should be called by the sage-sage script
+#
+# Released under the GNU GPL-v2+ -- (c) William Stein
+########################################################
+
+sage -c "print 'Sage works!'"
+if [ $? -ne 0 ]; then
+    echo "Sage doesn't even start.  Refusing to make a binary."
+    exit 1
+fi
+
+PKGDIR=spkg
+
+CUR=`pwd`
+
+if [ $UNAME = "Darwin" ]; then
+    OPT="Rp"
+else
+    OPT="ra"
+fi
+
+if [ $# -ne 2 ]; then
+   echo "Usage: $0 <SAGE_VERSION> <SAGE_ROOT>"
+   exit 1
+fi
+
+SAGE_VERSION=$1
+SAGE_ROOT=$2
+export SAGE_VERSION SAGE_ROOT
+
+TARGET=sage-"$SAGE_VERSION"-`uname -m`-`uname`
+TARGET=`echo $TARGET | sed -e 's/ //'`     #no blank spaces
+TMP="$CUR/tmp/$TARGET"
+
+if [ ! -d "$CUR/tmp" ]; then
+   mkdir "$CUR/tmp"
+fi
+
+if [ -d "$TMP" ]; then
+   rm -rf "$TMP"
+fi
+
+mkdir "$TMP"
+
+cd "$SAGE_ROOT"
+
+echo "Copying files over to tmp directory"
+cp -$OPT examples local makefile *.txt *.sage sage ipython data "$TMP"/
+
+if [ -d devel/sage-main ]; then
+   echo "Copying Sage library over"
+   mkdir "$TMP"/devel/
+   cp -L$OPT devel/sage-main "$TMP"/devel/sage-main
+   cd $TMP/devel
+   ln -s sage-main sage
+   cd sage
+   # Delete cython hash, so that "sage -br" works the first time.
+   rm -f .cython_hash
+   cd "$TMP"/local/lib/python/site-packages
+   rm -rf sage
+   ln -sf ../../../../devel/sage/build/sage .
+fi
+
+cd "$SAGE_ROOT"
+
+if [ -d $PKGDIR ]; then
+   echo "Making empty spkg's"
+   cd $PKGDIR
+   mkdir $TMP/$PKGDIR
+   mkdir $TMP/$PKGDIR/build
+   mkdir $TMP/$PKGDIR/optional
+   cp -$OPT installed $TMP/$PKGDIR/
+   cp -$OPT standard $TMP/$PKGDIR/
+   cp  install README.txt gen_html $TMP/$PKGDIR/
+   cd $TMP/$PKGDIR/standard/
+   for F in `/bin/ls *.spkg`; do
+       echo "Placeholder spkg file so this binary version of Sage knows this package version used when installing Sage." > $F
+   done
+fi
+
+cd "$CUR"/tmp/
+if [ "$UNAME" = "Darwin" ]; then
+    cd "$TARGET"
+    mkdir x
+    echo "There will be an error about x below that you can safely ignore."
+    mv * x
+    mv x sage
+    cp sage/local/bin/sage-README-osx.txt README.txt
+
+    if [ "$SAGE_APP_BUNDLE" = "yes" ]; then
+       echo 'Unpacking Sage.app'
+       tar -xzvf "$SAGE_ROOT/data/extcode/sage/ext/mac-app/Sage.app.tgz"
+       sed -i '' "s/SAGE_VERSION/$SAGE_VERSION/" \
+           ./Sage.app/Contents/Info.plist \
+           ./Sage.app/Contents/Resources/English.lproj/InfoPlist.strings
+
+       mv sage ./Sage.app/Contents/Resources/
+    fi
+
+    cd "$CUR"/tmp/
+    echo "Creating dmg"
+    DYLD_LIBRARY_PATH=$SAGE_ORIG_DYLD_LIBRARY_PATH; export DYLD_LIBRARY_PATH
+    hdiutil create -srcfolder "$TARGET" -format UDBZ "$TARGET".dmg
+else
+    echo "Creating tar.gz"
+    tar zcvf "$TARGET".tar.gz "$TARGET"
+fi
+
+if [ ! -d $SAGE_ROOT/dist ]; then
+    mkdir $SAGE_ROOT/dist
+fi
+
+if [ -d $SAGE_ROOT/dist/$TARGET ]; then
+    rm -rf "$SAGE_ROOT/dist/$TARGET"
+fi
+
+echo "Moving final distribution file to $SAGE_ROOT/dist"
+
+mv $TARGET $SAGE_ROOT/dist/
+mv $TARGET.* $SAGE_ROOT/dist/

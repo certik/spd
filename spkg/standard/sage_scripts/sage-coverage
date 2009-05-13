@@ -1,0 +1,149 @@
+#!/usr/bin/env python
+
+import os, sys, re
+
+if len(sys.argv) == 1:
+    print "Usage: sage -coverage <files>"
+    print "Give info about doctest coverage of files."
+    sys.exit(1)
+
+if len(sys.argv) == 2 and sys.argv[-1] == '.':
+    sys.exit(os.system("sage-coverageall ."))
+
+def functions_without_doctests(file):
+    docs  = []
+    tests = []
+    good  = []
+    possibly_wrong = []
+    while True:
+        i = file.find('def ')
+        if i == -1:
+            break
+
+        e = re.compile('\)\s*:')
+        m = e.search(file[i:])
+        if m is None:
+            break
+        j = m.end() + i
+
+        z = file[:i].rfind('\n')
+        if z != -1:
+            prev = file[z:i]
+            
+            # Skip line if it is commented out.
+            if prev.lstrip().startswith('#'):
+                file = file[j:]
+                continue
+
+            #Skip functions which are defined in doctests
+            if 'sage:' in prev or '...' in prev:
+                file = file[j:]
+                continue
+        
+        function_name = ' '.join(file[i:j].lstrip('def').split())
+        bare_function_name = function_name[:function_name.find("(")]
+
+        if i > 0 and file[i-1] in ['c', 'e']: # and ('\n' in file[i:j] or '(' not in file[i:j]):
+            file = file[i+10:]
+            continue
+        skip_this = False
+        for skip in ['__dealloc__', '__new__', '_']:
+            if function_name.startswith(skip + '('):
+                file = file[j:]
+                skip_this = True
+                break
+        if skip_this:
+            continue
+            
+        k = file[j:].find('\n')
+        if k == -1:
+            break
+        k += j
+        kk = file[k+1:].find('\n')
+        if kk == -1:
+            break
+        kk += k+1
+        
+        q0 = file[k:kk].find('"""')
+        if q0 == -1:
+            docs.append(function_name)
+        else:
+            q0 += k
+            q1 = file[q0+3:].find('"""')
+            if q1 == -1:
+                print "Error parsing %s"%function_name
+            else:
+                q1 += q0 + 3
+                d = file[q0:q1].find('sage:')
+                if d == -1:
+                    tests.append(function_name)
+                else:
+                    good.append(function_name)
+                    if not (bare_function_name[0:2] == '__' and
+                        bare_function_name[-2:] == '__'):
+                        d = file[q0:q1].find(bare_function_name)
+                        e = file[q0:q1].find('indirect doctest')
+                        if d == -1 and e == -1:
+                            possibly_wrong.append(function_name)
+                      
+        file = file[j+3:]
+    #end while
+    #docs.sort()
+    #tests.sort()
+    #good.sort()
+    return docs, tests, good, possibly_wrong
+
+def coverage(filename, file):
+    docs, tests, good, possibly_wrong = functions_without_doctests(file)
+    num_functions = len(good+docs+tests)
+    if num_functions == 0:
+        print "No functions in %s"%filename
+        return
+
+
+    #print os.path.abspath(filename)
+    print '-'*70
+    print filename
+    score = 100 * (len(good)) / float(num_functions)
+    score = int(score)
+
+    if 'class' in file and 'loads' not in file:
+        print "ERROR: Please define a s == loads(dumps(s)) doctest."
+
+    if score < 0:
+        score = 0
+
+    print "SCORE %s: %s%% (%s of %s)"%(filename, score, len(good), num_functions)
+
+    if docs:
+        print "\nMissing documentation:\n\t * %s\n"%('\n\t * '.join(docs))
+    if tests:
+        print "\nMissing doctests:\n\t * %s\n"%('\n\t * '.join(tests))
+
+    if possibly_wrong:
+        print "\nPossibly wrong (function name doesn't occur in doctests):\n" + \
+              "\t * %s\n"%('\n\t * '.join(possibly_wrong))
+
+    print '-'*70
+
+
+def go(file):
+    if os.path.isdir(file):
+        for F in os.listdir(file):
+            go('%s/%s'%(file,F))
+        return
+    if 'doctest_' in file or file.endswith('~'):
+        return
+    if not (file.endswith('.py') or file.endswith('.pyx')):
+        return
+    if not os.path.exists(file):
+        print "File %s does not exist."%file
+        sys.exit(1)
+
+    f = open(file).read()
+    coverage(file, f)
+    print ""
+    
+for file in sys.argv[1:]:
+    go(file)
+

@@ -1,0 +1,34 @@
+#!sage.bin   
+
+import os, sys
+
+os.chdir(sys.argv[1])
+
+if len(sys.argv) < 3:
+    print "You must give a file argument"
+    sys.exit(1)
+
+file    = sys.argv[2]
+options = ' '.join(sys.argv[3:])
+
+if file[0] == '-':
+    print "Unknown option: %s"%file
+    print "usage: sage [options]"
+    print "Try 'sage -h' for more information."
+    sys.exit(1)
+
+if file.endswith('.sage'):
+    if os.system('sage -preparse %s'%file):
+        sys.exit(1)
+    e = os.system('"$SAGE_LOCAL/bin/sage-python" %s.py %s'%(file[:-5], options))
+    sys.exit(e>>8)
+elif file.endswith('.spyx'):
+    e = os.system('"$SAGE_LOCAL/bin/sage-sagex" %s'%file)
+    sys.exit(e>>8)
+else:
+    e = os.system('"$SAGE_LOCAL/bin/sage-python" %s %s'%(file, options))
+    sys.exit(e>>8)
+
+
+
+

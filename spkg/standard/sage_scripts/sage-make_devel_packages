@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+
+########################################################
+# Rebuild SAGE packages related to development, e.g.,
+#    sage_scripts, sage, doc, extcode
+# This script should be called by the SAGE script
+########################################################
+
+if [ $# -ne 2 -a $# -ne 3 ]; then
+   echo "Usage: $0 <VERSION> <SAGE_ROOT> [DESTINATION_DIR]"
+   echo "If DESTINATION_DIR is omitted, put the results in spkg/standard."
+   exit 1
+fi
+
+SAGE_VERSION=$1
+SAGE_ROOT=$2
+SPKG_INST=$SAGE_ROOT/spkg/installed/
+export SAGE_ROOT SAGE_VERSION 
+TARGET="sage-"$1
+
+# REMOVE OLD PACKAGES
+cd "$SAGE_ROOT"/spkg/standard/
+rm doc-*.spkg
+rm examples-*.spkg
+rm extcode-*.spkg
+rm sage-*.spkg
+rm sage_scripts-*.spkg
+
+if [ $# -eq 2 ]; then
+   DESTINATION="$SAGE_ROOT"/spkg/standard/
+else
+   DESTINATION=$3
+fi
+
+if [ ! -d $DESTINATION ]; then
+   mkdir $DESTINATION
+fi
+
+cd "$DESTINATION"
+DESTINATION=`pwd`
+PKG=$DESTINATION
+
+# NEW SAGE SOURCE PACKAGE
+if [ -d $SAGE_ROOT/devel/sage-main ]; then
+   cd $SAGE_ROOT/devel/sage-main
+   hg diff
+   hg status
+   hg tag "$SAGE_VERSION"
+   hg commit -m "$SAGE_VERSION"
+   #./sage-push
+   chmod +x spkg-dist
+   ./spkg-dist $SAGE_VERSION $SAGE_ROOT
+   if [ $? -ne 0 ]; then
+       echo "Error building the sage source code package"
+       exit 1
+   fi
+   mv dist/sage-$SAGE_VERSION.spkg $DESTINATION/
+   touch $SPKG_INST/sage-$SAGE_VERSION
+fi
+
+if [ ! -f $PKG/sage-$SAGE_VERSION.spkg ]; then
+    echo "The package sage-$SAGE_VERSION.spkg wasn't created."
+    exit 1
+fi
+
+# NEW SAGE EXTERNAL CODE PACKAGE
+if [ -d $SAGE_ROOT/data/extcode ]; then
+   cd $SAGE_ROOT/data/extcode
+   hg diff
+   hg status
+   hg tag "$SAGE_VERSION"
+   hg commit -m "$SAGE_VERSION"
+  
+   #./sage-push
+   chmod +x spkg-dist
+   ./spkg-dist $SAGE_VERSION $SAGE_ROOT
+   if [ $? -ne 0 ]; then
+       echo "Error building the extcode package"
+       exit 1
+   fi
+   mv extcode-$SAGE_VERSION.spkg $DESTINATION/
+   touch $SPKG_INST/extcode-$SAGE_VERSION
+fi
+
+
+if [ ! -f $PKG/extcode-$SAGE_VERSION.spkg ]; then
+    echo "The package extcode-$SAGE_VERSION.spkg wasn't created."
+    exit 1
+fi
+
+# NEW SAGE EXAMPLE CODE PACKAGE
+if [ -d $SAGE_ROOT/examples ]; then 
+   cd $SAGE_ROOT/examples
+   hg diff
+   hg status
+   hg tag "$SAGE_VERSION"
+   hg commit -m "$SAGE_VERSION"
+   #./sage-push
+   cd ..
+   rm -rf examples-$SAGE_VERSION
+   cp -r examples examples-$SAGE_VERSION
+   "$SAGE_ROOT"/sage -pkg examples-$SAGE_VERSION
+   if [ $? -ne 0 ]; then
+       echo "Error building examples package"
+       exit 1
+   fi
+   mv examples-$SAGE_VERSION.spkg $DESTINATION/
+   rm -rf examples-$SAGE_VERSION
+   touch $SPKG_INST/examples-$SAGE_VERSION
+fi
+
+if [ ! -f $PKG/examples-$SAGE_VERSION.spkg ]; then
+    echo "The package examples-$SAGE_VERSION.spkg wasn't created."
+    exit 1
+fi
+
+
+#################################
+
+
+# NEW SAGE SCRIPTS PACKAGE
+SCRIPTS=sage_scripts-$SAGE_VERSION
+cd $SAGE_ROOT/local/bin/
+
+#./sage-push
+hg diff
+hg status
+hg tag "$SAGE_VERSION"
+hg commit -m "$SAGE_VERSION"
+
+if [ $? -ne 0 ]; then
+    echo "Error pushing scripts repository."
+    exit 1
+fi
+
+rm -rf $SCRIPTS
+mkdir $SCRIPTS
+chmod +x sage-*
+chmod +x dsage_*
+rm sage-*~
+
+cp -pr dsage_* sage-* .hg* ipy_profile_sage.py $SCRIPTS/
+cp -p $SAGE_ROOT/sage-python $SCRIPTS/
+cp -p $SAGE_ROOT/*.txt $SCRIPTS/
+cp -pr $SAGE_ROOT/ipython $SCRIPTS/
+cp -p $SAGE_ROOT/spkg/install $SCRIPTS/
+cp -p $SAGE_ROOT/local/bin/sage-spkg-install $SCRIPTS/spkg-install
+cp -p $SAGE_ROOT/local/bin/SbuildHack.pm $SCRIPTS/
+cp -p $SAGE_ROOT/local/bin/ncadoctest.py $SCRIPTS/
+cp -p $SAGE_ROOT/local/bin/sagedoctest.py $SCRIPTS/
+
+chmod +x $SCRIPTS/spkg-install
+tar -jcf $SCRIPTS.spkg $SCRIPTS
+mv $SCRIPTS.spkg $DESTINATION/
+rm -rf $SCRIPTS
+touch $SPKG_INST/sage_scripts-$SAGE_VERSION
+
+if [ ! -f $PKG/sage_scripts-$SAGE_VERSION.spkg ]; then
+    echo "The package sage_scripts-$SAGE_VERSION.spkg wasn't created."
+    exit 1
+fi

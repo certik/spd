@@ -1,0 +1,52 @@
+#!sage.bin 
+# -*- coding: utf-8 -*-
+"""
+SAGE IPython startup script.
+
+"""
+
+import os
+import sys
+
+#Make sure we're using the Sage profile
+#is one isn't specified
+if '-p' not in sys.argv:
+    sys.argv.extend(['-p', 'sage'])
+
+__SAGE_AUTOINJECT__ = True
+
+import IPython
+from IPython.CrashHandler import CrashHandler
+
+ipy_sage = IPython.Shell.start()
+
+sageCH = CrashHandler(ipy_sage.IP, 'Sage', 'sage-support',
+                      'sage-support@googlegroups.com',
+                      'http://trac.sagemath.org/sage_trac',
+		      'Sage_crash_report.txt',
+                      show_crash_traceback=False)
+
+ipy_sage.IP.set_crash_handler(sageCH)
+
+import new
+import os
+
+old_system = ipy_sage.IP.system
+
+
+
+sage_commands = os.listdir(os.environ['SAGE_ROOT']+"/local/bin/")
+DARWIN_SYSTEM = os.uname()[0]=='Darwin'
+
+def sage_system(self, cmd):
+    if cmd in sage_commands:
+        old_system(cmd)
+    else:
+        libraries = 'LD_LIBRARY_PATH=$$SAGE_ORIG_LD_LIBRARY_PATH;'
+        if DARWIN_SYSTEM:
+            libraries += 'DYLD_LIBRARY_PATH=$$SAGE_ORIG_DYLD_LIBRARY_PATH;'
+        old_system(libraries+cmd)
+
+ipy_sage.IP.system = new.instancemethod(sage_system, ipy_sage.IP, IPython.iplib.InteractiveShell)
+
+ipy_sage.mainloop(sys_exit=1, banner='')

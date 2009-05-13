@@ -1,0 +1,149 @@
+#!/usr/bin/env python
+
+####################################################################
+# Run the Sage doctest system on the collection of files and
+# directories specified on the command line.
+
+####################################################################
+
+import os, signal, sys, time
+
+
+argv = sys.argv
+
+opts = ' '.join([X for X in argv if X[0] == '-'])
+argv = [X for X in argv if X[0] != '-']
+
+t0 = time.time()
+
+def abspath(x):
+    return strip_automount_prefix(os.path.abspath(x))
+
+def strip_automount_prefix(filename):
+    """
+    Strip prefixes added on automounted filesystems in some cases,
+    which make the absolute path appear hidden.
+    
+    AUTHOR:
+        -- Kate Minola
+    """
+    sep = os.path.sep
+    str = filename.split(sep,2)
+    if len(str) < 2:
+        new = sep
+    else:
+        new = sep + str[1]
+    if os.path.exists(new):
+        inode1 = os.stat(filename)[1]
+        inode2 = os.stat(new)[1]
+        if inode1 == inode2:
+            filename = new
+    return filename
+
+
+SAGE_ROOT=os.environ['SAGE_ROOT']
+if 'SAGE_TESTDIR' not in os.environ:
+    os.environ['SAGE_TESTDIR'] = SAGE_ROOT + "/tmp"
+TMP=os.environ['SAGE_TESTDIR'] + "/tmp"
+if not os.path.exists(TMP):
+    os.makedirs(TMP)
+
+def sage_test_command(f):
+    g = abspath(f)
+    if SAGE_ROOT in g:
+        f = g[len(SAGE_ROOT)+1:]
+    return 'sage -t %s "%s"'%(opts, f)
+
+def skip(F):
+    G = abspath(F)
+    i = G.rfind('/')
+    if os.path.exists('%s/nodoctest.py'%G[:i]):
+        print "%s (skipping) -- nodoctest.py file in directory"%sage_test_command(F)
+        return True
+
+    if G == "all.py" or "__init__.py" in G \
+          or 'nodoctest' in open(G).read()[:50]:
+        return True
+
+    sys.stdout.write("%-60s"%sage_test_command(F)+"\n")
+    sys.stdout.flush()
+    return False
+
+failed = []
+
+def test(F, cmd):
+    t = time.time()
+    if skip(F):
+        return 0
+    try:
+        s = '%s/local/bin/sage-%s "%s"'%(SAGE_ROOT, cmd, F)
+        err = os.system(s)   # need to catch control c by writing to a file and looking at it??
+    except KeyboardInterrupt:
+        print "Keyboard Interrupt"
+        print "Aborting further tests."
+        sys.exit(1)
+    if err != 0:
+        failed.append(sage_test_command(F))
+    os.system("mv -f __test* %s 2>/dev/null"%(TMP))
+    print "\t [%.1f s]"%(time.time() - t)
+    return err
+
+
+def test_file(F):
+    if not os.path.exists(F):
+        if F[:6] != "__test" and not F.endswith('.png'):
+            print "ERROR: File %s/%s is missing"%(os.curdir,F)
+            failed.append('%s/%s'%(os.curdir,F))
+        return 1
+
+    base, ext = os.path.splitext(F)
+    if ext in ['.py', '.spyx', '.pyx', '.tex', '.pxi', '.sage', '.rst']:
+        return test(F, 'doctest '+opts)
+    elif os.path.isdir(F) and not (F[:1] == '.') \
+            and not '#' in F and not '/notes' in F:
+        ld = os.listdir(F)
+        if not ('__nodoctest__' in ld):
+            for L in ld:
+                k = test_file('%s/%s'%(F,L))
+    return 0
+
+files = argv[1:]
+if len(files) == 0:
+    print "Usage: sage -t [-verbose] [-long] [-optional] [-only-optional=list,of,tags] <files or directories>"
+    print "Test the docstrings in each listed Python or Cython file, and "
+    print "if a directory is given, test the docstrings in all files in"
+    print "all subdirectories of that directory."
+    print ""
+    print "OPTIONS:"
+    print "     -long          -- include lines with the phrase 'long time'"
+    print "     -verbose       -- print debuging output during the test"
+    print "     -optional      -- also test all #optional examples"
+    print "     -only-optional=list,of,tags -- only run doctests with "
+    print "                       #optional <nonempty subset of tags>"
+    print "      if the list of tags is omitted, run all optional doctests"
+    print "     -randorder     -- if given, randomize *order* of tests"
+    print "     -randorder=seed-- use seed to get same random order"
+    
+    sys.exit(1)
+
+files.sort()
+        
+for F in files:
+    e = test_file(F)
+    if e!=0 and e!=512:
+        print "exit code: %s"%e
+    #    sys.exit(1)
+    
+print " "
+print "-"*int(70)
+
+if len(failed) == 0:
+    print "All tests passed!"
+else:
+    print "The following tests failed:\n"
+    print "\n\t" + "\n\t".join(failed)
+
+print "Total time for all tests: %.1f seconds"%(time.time() - t0)
+
+
+

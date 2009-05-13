@@ -1,0 +1,366 @@
+#!/bin/sh
+
+CUR=`pwd`
+cd ..
+SAGE_ROOT=`pwd`
+cd "$CUR"
+SAGE_LOCAL="$SAGE_ROOT/local"
+PATH="$SAGE_ROOT:$SAGE_LOCAL/bin:$PATH"
+PYTHONPATH="$SAGE_LOCAL"
+PKGDIR=standard
+export PATH SAGE_ROOT SAGE_LOCAL PYTHONPATH
+
+if [ ! -f "$SAGE_LOCAL/bin/sage-spkg" ]; then
+    if [ ! -d "$SAGE_LOCAL" ]; then
+        mkdir "$SAGE_LOCAL"
+    fi
+    if [ ! -d "$SAGE_LOCAL/bin" ]; then
+        mkdir "$SAGE_LOCAL/bin"
+    fi
+    cp base/sage-* "$SAGE_LOCAL/bin/"
+fi
+
+############
+# Setup environment variables pointing to the newest versions
+# of the base packages
+############
+newest="$PKGDIR/newest_version -base "
+
+SAGE_BZIP2=`$newest bzip2`
+export SAGE_BZIP2
+
+DIR=`$newest dir`
+export DIR
+
+PREREQ=`$newest prereq`
+export PREREQ
+
+############
+# Setup environment variables pointing to the newest versions
+# of the standard packages
+############
+newest="$PKGDIR/newest_version"
+
+ATLAS=`$newest atlas`
+export ATLAS
+
+#BISON=`$newest bison`
+#export BISON
+
+BLAS=`$newest blas`
+export BLAS
+
+BOEHM_GC=`$newest boehm_gc`
+export BOEHM_GC
+
+CDDLIB=`$newest cddlib`
+export CDDLIB
+
+CLISP=`$newest clisp`
+export CLISP
+
+CONWAY=`$newest conway_polynomials`
+if [ $? -ne 0 ]; then
+    echo "Error determining package name using spkg/standard/newest_version script."
+    exit 1
+fi
+export CONWAY
+
+ECLIB=`$newest eclib`
+export ECLIB
+
+ELLIPTIC_CURVES=`$newest elliptic_curves`
+export ELLIPTIC_CURVES
+
+CVXOPT=`$newest cvxopt`
+export CVXOPT
+
+DOCUTILS=`$newest docutils`
+export DOCUTILS
+
+#DSAGE=`$newest dsage`
+#export DSAGE
+
+ECM=`$newest ecm`
+export ECM
+
+EXAMPLES=`$newest examples`
+export EXAMPLES
+
+EXTCODE=`$newest extcode`
+export EXTCODE
+
+F2C=`$newest f2c`
+export F2C
+
+#FLEX=`$newest flex`
+#export FLEX
+
+#############
+# This is all for GNUtls crypto
+LIBGCRYPT=`$newest libgcrypt`
+export LIBGCRYPT
+
+OPENCDK=`$newest opencdk`
+export OPENCDK
+
+GNUTLS=`$newest gnutls`
+export GNUTLS
+
+LIBGPG_ERROR=`$newest libgpg_error`
+export LIBGPG_ERROR
+
+PYGMENTS=`$newest pygments`
+export PYGMENTS
+
+PYTHON_GNUTLS=`$newest python_gnutls`
+export PYTHON_GNUTLS
+
+############# end gnutls crypto
+
+PYPROCESSING=`$newest pyprocessing`
+export PYPROCESSING
+
+LIBM4RI=`$newest libm4ri`
+export LIBM4RI
+
+DSAGE=`$newest dsage`
+export DSAGE 
+
+FORTRAN=`$newest fortran`
+export FORTRAN
+
+FPLLL=`$newest libfplll`
+export FPLLL
+
+FREETYPE=`$newest freetype`
+export FREETYPE
+
+GAP=`$newest gap`
+export GAP
+
+G2RED=`$newest genus2reduction`
+export G2RED
+
+GD=`$newest gd`
+export GD
+
+GDMODULE=`$newest gdmodule`
+export GDMODULE
+
+GFAN=`$newest gfan`
+export GFAN
+
+GIVARO=`$newest givaro`
+export GIVARO
+
+GHMM=`$newest ghmm`
+export GHMM
+
+GMP=`$newest gmp`
+export GMP
+
+GRAPHS=`$newest graphs`
+export GRAPHS
+
+GSL=`$newest gsl`
+export GSL
+
+#GNUPLOTPY=`$newest gnuplotpy`
+#export GNUPLOTPY
+
+IPYTHON=`$newest ipython`
+export IPYTHON
+
+LAPACK=`$newest lapack`
+export LAPACK
+
+LCALC=`$newest lcalc`
+export LCALC
+
+LIBPNG=`$newest libpng`
+export LIBPNG
+
+LINBOX=`$newest linbox`
+export LINBOX
+
+IML=`$newest iml`
+export IML
+
+JMOL=`$newest jmol`
+export JMOL
+
+JINJA=`$newest jinja`
+export JINJA
+
+JSMATH_SPKG=`$newest jsmath`
+export JSMATH_SPKG
+
+JQUERY_SPKG=`$newest jquery`
+export JQUERY_SPKG
+
+JQUERYUI_SPKG=`$newest jqueryui`
+export JQUERYUI_SPKG
+
+MATPLOTLIB=`$newest matplotlib`
+export MATPLOTLIB
+
+#LIBSIGSEGV=`$newest libsigsegv`
+#export LIBSIGSEGV
+
+MAXIMA=`$newest maxima`
+export MAXIMA
+
+MERCURIAL=`$newest mercurial`
+export MERCURIAL
+
+MPFI=`$newest mpfi`
+export MPFI
+
+MOIN=`$newest moin`
+export MOIN
+
+MPFR=`$newest mpfr`
+export MPFR
+
+NETWORKX=`$newest networkx`
+export NETWORKX
+
+NUMPY=`$newest numpy`
+export NUMPY
+
+NTL=`$newest ntl`
+export NTL
+
+#OPENSSL=`$newest openssl`
+#export OPENSSL
+
+#PYOPENSSL=`$newest pyopenssl`
+#export PYOPENSSL
+
+PALP=`$newest palp`
+export PALP
+
+PARI=`$newest pari`
+export PARI
+
+PEXPECT=`$newest pexpect`
+export PEXPECT
+
+POLYBORI=`$newest polybori`
+export POLYBORI
+
+PYNAC=`$newest pynac`
+export PYNAC
+
+CYTHON=`$newest cython`
+export CYTHON
+
+SPHINX=`$newest sphinx`
+export SPHINX
+
+SQLALCHEMY=`$newest sqlalchemy`
+export SQLALCHEMY
+
+SQLITE=`$newest sqlite`
+export SQLITE
+
+FLINTQS=`$newest flintqs`
+export FLINTQS
+
+FLINT=`$newest flint`
+export FLINT
+
+POLYTOPES_DB=`$newest polytopes_db`
+export POLYTOPES_DB
+
+PYCRYPTO=`$newest pycrypto`
+export PYCRYPTO
+
+#PYREXEMBED=`$newest pyrexembed`
+#export PYREXEMBED
+
+PYTHON=`$newest python`
+export PYTHON
+
+QUADDOUBLE=`$newest quaddouble`
+export QUADDOUBLE
+
+R=`$newest r`
+export R
+
+READLINE=`$newest readline`
+export READLINE
+
+RUBIKS=`$newest rubiks`
+export RUBIKS
+
+SAGE=`$newest sage`
+export SAGE
+
+SAGE_SCRIPTS=`$newest sage_scripts`
+export SAGE_SCRIPTS
+
+SCIPY=`$newest scipy`
+export SCIPY
+
+SCIPY_SANDBOX=`$newest scipy_sandbox`
+export SCIPY_SANDBOX
+
+TACHYON=`$newest tachyon`
+export TACHYON
+
+TINYMCE_SPKG=`$newest tinyMCE`
+export TINYMCE_SPKG
+
+TWISTED=`$newest twisted`
+export TWISTED
+
+SCONS=`$newest scons`
+export SCONS
+
+SETUPTOOLS=`$newest setuptools`
+export SETUPTOOLS
+
+SINGULAR=`$newest singular`
+export SINGULAR
+
+SYMPOW=`$newest sympow`
+export SYMPOW
+
+SYMPY=`$newest sympy`
+export SYMPY
+
+SYMMETRICA=`$newest symmetrica`
+export SYMMETRICA
+
+TERMCAP=`$newest termcap`
+export TERMCAP
+
+WEAVE=`$newest weave`
+export WEAVE
+
+ZLIB=`$newest zlib`
+export ZLIB
+
+ZODB=`$newest zodb3`
+export ZODB
+
+ZNPOLY=`$newest zn_poly`
+export ZNPOLY
+
+########
+# NOW do the actual build
+
+time make -f standard/deps $1
+"$SAGE_ROOT"/sage -docbuild --jsmath all html
+
+if [ "$1" = "all" -a $? = 0 ]; then
+    echo "To install gap, gp, singular, etc., scripts"
+    echo "in a standard bin directory, start sage and"
+    echo "type something like"
+    echo "   sage: install_scripts('/usr/local/bin')"
+    echo "at the SAGE command prompt."
+    echo ""
+    echo "SAGE build/upgrade complete!"
+fi

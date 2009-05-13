@@ -1,0 +1,344 @@
+#!/usr/bin/env python
+
+from __future__ import with_statement
+import os, signal, sys, time, thread, threading, tempfile, pickle
+
+####################################
+
+argv = sys.argv
+try:
+    numiteration = int(os.environ['SAGE_TEST_ITER'])
+except:
+    numiteration = 1
+
+try:
+    numglobaliteration = int(os.environ['SAGE_TEST_GLOBAL_ITER'])
+except:
+    numglobaliteration = 1
+
+SAGE_ROOT = os.environ['SAGE_ROOT']
+BUILD_DIR = os.path.realpath(SAGE_ROOT + "/devel/sage/build")
+
+print 'Global iterations: ' + str(numglobaliteration)
+print 'File iterations: ' + str(numiteration)
+
+abort = False
+
+def run(x):
+    global abort
+    try:
+        while True:
+            filemutex.acquire()
+            if len(files)!=0 and abort==False:
+                F = files.pop()
+                filemutex.release()
+                base, ext = os.path.splitext(F)
+                if use_sage_only or ext == '.sage':
+                    e = test(F, 'doctest_tex ' + opts)
+                elif ext in ['.py', '.pyx', '.tex', '.pxi', '.rst']:
+                    e = test(F, 'doctest '+opts)
+                else:
+                    continue # prefer silence to: raise TypeError, "Unknown File %s" % F
+                if e==-2:
+                    raise KeyboardInterrupt
+            else:
+               filemutex.release()
+               return
+    except KeyboardInterrupt:
+        abort = True
+        return
+
+def abspath(x):
+    """
+    This function returns the absolute path (adjusted for NFS)
+    """
+    return strip_automount_prefix(os.path.abspath(x))
+
+def strip_automount_prefix(filename):
+    """
+    Strip prefixes added on automounted filesystems in some cases,
+    which make the absolute path appear hidden.
+
+    AUTHOR:
+        -- Kate Minola
+    """
+    sep = os.path.sep
+    str = filename.split(sep,2)
+    if len(str) < 2:
+        new = sep
+    else:
+        new = sep + str[1]
+    if os.path.exists(new):
+        inode1 = os.stat(filename)[1]
+        inode2 = os.stat(new)[1]
+        if inode1 == inode2:
+            filename = new
+    return filename
+
+def abs(f):
+    """
+    Return the test command for the file
+    """
+    return "sage -t %s %s"%(opts, abspath(f)[len(SAGE_ROOT)+1:])
+
+def sage_test_cmd(f):
+    """
+    Return the test command for the file as given
+    """
+    return "sage -t %s %s"%(opts, f)
+
+def abs_sage_path(f):
+    """
+    Return the absolute path, relative to the sage root directory
+    """
+    return abspath(f)[len(SAGE_ROOT)+1:]
+
+def skip(F):
+    """
+    Returns true if the file should not be tested
+    """
+    if not os.path.exists(F):
+        return True
+    G = abspath(F)
+    i = G.rfind('/')
+    if os.path.exists('%s/nodoctest.py'%G[:i]):
+        printmutex.acquire()
+        print "%s (skipping) -- nodoctest.py file in directory"%abs(F)
+        printmutex.release()
+        return True
+    filenm = os.path.split(F)[1]
+    if filenm == "all.py" or filenm == "__init__.py" \
+          or filenm[0] == '.' or '/.' in G.lstrip('/.') or \
+          'nodoctest' in open(G).read()[:50]:
+        return True
+    if not (os.path.splitext(F)[1] in ['.py', '.pyx', '.tex', '.pxi', '.sage', '.rst']):
+        return True
+    return False
+
+def test_file(F):
+    """
+    This is the function that actually tests a file
+    """
+    outfile = tempfile.NamedTemporaryFile()
+    base, ext = os.path.splitext(F)
+    if use_sage_only or ext == '.sage':
+        cmd =  'doctest_tex ' + opts
+    elif ext in ['.py', '.pyx', '.tex', '.pxi', '.rst']:
+        cmd = 'doctest '+opts
+    filestr = os.path.split(F)[1]
+    for i in range(0,numiteration):
+        os.chdir(os.path.dirname(F))
+        s = 'bash -c "%s/local/bin/sage-%s %s > %s" ' %(SAGE_ROOT, cmd, filestr, outfile.name)
+        try:
+            t = time.time()
+            ret = os.system(s)
+            finished_time = time.time() - t
+            if ret>=256:
+                ret=ret/256
+            ret = -ret
+        except:
+            ol = outfile.read()
+            return (-5, 0, ol)
+        ol = outfile.read()
+        if ret != 0:
+            break
+    return (F, ret, finished_time, ol)
+
+def process_result(result):
+    """
+    This file takes a tuple in the form
+    (F, ret, finished_time, ol)
+    and processes it to display/log the appropriate output.
+    """
+    global failed
+    F = result[0]
+    ret = result[1]
+    finished_time = result[2]
+    ol = result[3]
+    if ret != 0:
+        if ret == -4:
+            numfail = ol.count('Expected:') + ol.count('Expected nothing') + ol.count('Exception raised:')
+            failed.append(abs(F)+(" # %s doctests failed" % numfail))
+            ret = numfail
+        elif ret == -3:
+            failed.append(abs(F)+" # Segfault")
+        elif ret == -2:
+            failed.append(abs(F)+" # KeyboardInterrupt")
+        elif ret == -1:
+            failed.append(abs(F)+" # File not found")
+        else:
+            failed.append(abs(F))
+    if abspath(F)[:len(CUR)]==CUR:
+        print sage_test_cmd(F[len(CUR)+1:])
+    else:
+        print abs(F)
+    if ol!="" and (not ol.isspace()):
+        if (ol[len(ol)-1]=="\n"):
+            ol=ol[0:len(ol)-1]
+        print ol
+    time_dict[abs_sage_path(F)] = finished_time
+    print "\t [%.1f s]"%(finished_time)
+
+def infiles_cmp(a,b):
+    """
+    This compare function is used to sort the list of filenames by the time they take to run
+    """
+    if time_dict.has_key(abs_sage_path(a)):
+        if time_dict.has_key(abs_sage_path(b)):
+            return cmp(time_dict[abs_sage_path(a)],time_dict[abs_sage_path(b)])
+        else:
+            return 1
+    else:
+        return -1
+
+def populatefilelist(filelist):
+    """
+    This populates the file list by expanding directories into lists of files
+    """
+    global CUR
+    filemutex.acquire()
+    for FF in filelist:
+        if os.path.isfile(FF):
+            if skip(FF):
+                continue
+            if not os.path.isabs(FF):
+                cwd = os.getcwd()
+                files.append(cwd + '/' +  FF)
+            else:
+                files.append(FF)
+            continue
+
+        curdir = os.getcwd()
+        walkdir = os.path.join(CUR,FF)
+
+        for root, dirs, lfiles in os.walk(walkdir):
+            for F in lfiles:
+                base, ext = os.path.splitext(F)
+                if use_sage_only and ext == '.sage':
+                    continue
+                elif not (ext in ['.py', '.pyx', '.tex', '.pxi', '.rst']):
+                    continue
+                elif '__nodoctest__' in files:
+                    continue
+                appendstr = os.path.join(root,F)
+                if skip(appendstr):
+                    continue
+                if os.path.realpath(appendstr).startswith(BUILD_DIR):
+                    continue
+                files.append(appendstr)
+            for D in dirs:
+                if '#' in D or '/notes' in D:
+                    dirs.remove(D)
+    filemutex.release()
+    return 0
+
+
+
+
+
+
+
+
+
+
+for gr in range(0,numglobaliteration):
+
+    try:
+        i = argv.index('-sage')
+        del argv[i]
+        use_sage_only = True
+    except ValueError:
+        use_sage_only = False
+
+    opts = ' '.join([X for X in argv if X[0] == '-'])
+    argv = [X for X in argv if X[0] != '-']
+    infiles = argv[2:]
+    if len(infiles) == 0:
+        print "Usage: sage -t <files or directories>."
+        print "For more information, type 'sage -help'."
+        sys.exit(1)
+
+    infiles.sort()
+
+    files = list()
+
+    t0 = time.time()
+    filemutex = thread.allocate_lock()
+    printmutex = thread.allocate_lock()
+    #Pick a filename for the timing files -- long vs normal
+    time_file_name = os.environ["SAGE_TESTDIR"]+"/"
+    if opts.count("-long"):
+        time_file_name+=".ptest_timing_long"
+    else:
+        time_file_name+=".ptest_timing"
+    time_dict = { }
+    try:
+        with open(time_file_name) as time_file:
+            time_dict = pickle.load(time_file)
+        if opts.count("-long"):
+            print "Using long cached timings to run longest doctests first."
+        else:
+            print "Using cached timings to run longest doctests first."
+    except:
+        time_dict = { }
+        if opts.count("-long"):
+            print "No long cached timings exist; will create upon successful finish."
+        else:
+            print "No cached timings exist; will create upon successful finish."
+    done = False
+
+    numthreads = int(argv[1])
+
+    CUR = abspath(os.getcwd())
+
+    failed = []
+
+    SAGE_ROOT=os.environ['SAGE_ROOT']
+    TMP=SAGE_ROOT + "/tmp/test/"
+    if not os.path.exists(TMP):
+        os.makedirs(TMP)
+
+
+    populatefilelist(infiles)
+    #Sort the files by test time
+    files.sort(infiles_cmp)
+    files.reverse()
+    interrupt = False
+
+    print "Doctesting %i files doing %i jobs in parallel" % (len(files), numthreads)
+
+    try:
+        from processing import Pool
+        p = Pool(numthreads)
+        for r in p.imap_unordered(test_file, files):
+            #The format is  (F, ret, finished_time, ol)
+            process_result(r)
+    except KeyboardInterrupt:
+        interrupt = True
+        pass
+    print " "
+    print "-"*int(70)
+
+    os.chdir(CUR)
+    
+    if len(failed) == 0:
+        if interrupt == False:
+            print "All tests passed!"
+        else:
+            print "Keyboard Interrupt: All tests that ran passed."
+        #Only update timings if we are doing something standard
+        if opts=="-long" or len(opts)==0:
+            with open(time_file_name,"w") as time_file:
+                pickle.dump(time_dict, time_file)
+                print "Timings have been updated."
+    else:
+        if interrupt:
+            print "Keyboard Interrupt, not all tests ran"
+        print "\nThe following tests failed:\n"
+        for i in range(len(failed)):
+               print "\t", failed[i]
+        print "-"*int(70)
+
+    print "Total time for all tests: %.1f seconds"%(time.time() - t0)
+
+
