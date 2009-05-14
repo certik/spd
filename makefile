@@ -28,7 +28,7 @@ distclean:
 	rm -rf spkg/build
 	rm -rf spkg/archive
 	rm -rf ipython
-	rm -rf matplotlibrc
+	rm -rf matplotlib
 	rm -rf tmp
 
 test:   all

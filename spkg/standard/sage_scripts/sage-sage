@@ -168,6 +168,10 @@ sage_setup() {
         mkdir -p "$DOT_SAGE"
         cp -r "$SAGE_ROOT/ipython" "$DOT_SAGE/"
     fi
+    MPLCONFIGDIR="$DOT_SAGE/matplotlib" && export MPLCONFIGDIR
+    if [ ! -d "$MPLCONFIGDIR" ]; then
+        cp -r "$SAGE_ROOT/matplotlib" "$DOT_SAGE/"
+    fi
     sage-cleaner &
 }
 
