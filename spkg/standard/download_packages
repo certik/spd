@@ -15,7 +15,7 @@ $WGET $SAGE_STANDARD/termcap-1.3.1.p0.spkg
 $WGET $SAGE_STANDARD/zlib-1.2.3.p4.spkg
 $WGET $SAGE_STANDARD/readline-5.2.p6.spkg
 $WGET $SAGE_STANDARD/python-2.5.2.p9.spkg
-$WGET $SAGE_STANDARD/ipython-0.9.1.spkg
+$WGET $SPD_STANDARD/ipython-bzr1174.spkg
 
 # notebook:
 $WGET $SPD_STANDARD/pexpect-2.0.p3.spkg
