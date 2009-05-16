@@ -538,6 +538,8 @@ import_all
 #execute def variables(): return [k for k in globals() if not k in iglob and len(k) > 0 and k[0] != '_']
 #execute import sage.misc.preparser_ipython;  sage.misc.preparser_ipython.magma_colon_equals=True
 
+# import the SPD notebook:
+execute from sage.server.notebook.notebook_object import notebook
 
 # Note for the adventurous: you can use this to define your own names for the
 # magic functions, by playing some namespace tricks:
