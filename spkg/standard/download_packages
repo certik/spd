@@ -14,7 +14,7 @@ fi
 $WGET $SAGE_STANDARD/termcap-1.3.1.p0.spkg
 $WGET $SAGE_STANDARD/zlib-1.2.3.p4.spkg
 $WGET $SAGE_STANDARD/readline-5.2.p6.spkg
-$WGET $SAGE_STANDARD/python-2.5.2.p9.spkg
+$WGET $SAGE_STANDARD/python-2.5.4.p1.spkg
 $WGET $SPD_STANDARD/ipython-bzr1174.spkg
 $WGET $SAGE_STANDARD/cython-0.11.1.p0.spkg
 
@@ -38,8 +38,8 @@ $WGET $SAGE_STANDARD/fortran-20071120.p5.spkg
 $WGET $SAGE_STANDARD/lapack-20071123.p0.spkg
 $WGET $SAGE_STANDARD/blas-20070724.spkg
 #$WGET $SAGE_STANDARD/atlas-3.8.3.p0.spkg
-$WGET $SAGE_STANDARD/numpy-1.2.0.p0.spkg
-$WGET $SAGE_STANDARD/scipy-20071020-0.6.p4.spkg
+$WGET $SAGE_STANDARD/numpy-1.3.0.spkg
+$WGET $SAGE_STANDARD/scipy-0.7.p1.spkg
 $WGET $SAGE_STANDARD/freetype-2.3.5.p0.spkg
 $WGET $SAGE_STANDARD/libpng-1.2.35.spkg
 $WGET $SAGE_STANDARD/matplotlib-0.98.5.3rc0-svn6910.p3.spkg
